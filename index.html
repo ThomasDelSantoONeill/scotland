@@ -3437,8 +3437,11 @@
     // Park4Night deep-link: try app first, fall back to website
     document.querySelectorAll('.p4n-link').forEach(link => {
       link.addEventListener('click', function (e) {
-        // Only attempt app deep-link on mobile/tablet
-        if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) return;
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        // Desktop: let the default link behaviour work
+        if (!isAndroid && !isIOS) return;
 
         e.preventDefault();
         const webUrl = this.href;
@@ -3446,24 +3449,26 @@
         const lat = params.get('lat');
         const lng = params.get('lng');
 
-        // Park4Night app URI scheme
-        const appUrl = `park4night://search?lat=${lat}&lng=${lng}&z=13`;
-
-        // Track if we've left the page (app opened)
-        let hasLeft = false;
-        const onBlur = () => { hasLeft = true; };
-        window.addEventListener('blur', onBlur);
-
-        // Try opening the app
-        window.location.href = appUrl;
-
-        // If still here after 1.5s, app isn't installed — open website
-        setTimeout(() => {
-          window.removeEventListener('blur', onBlur);
-          if (!hasLeft) {
-            window.open(webUrl, '_blank', 'noopener');
-          }
-        }, 1500);
+        if (isAndroid) {
+          // Android Chrome: use intent URL — opens app if installed, falls back to website
+          const intentUrl =
+            `intent://search?lat=${lat}&lng=${lng}&z=13#Intent;` +
+            `scheme=park4night;` +
+            `package=fr.tramb.park4night;` +
+            `S.browser_fallback_url=${encodeURIComponent(webUrl)};` +
+            `end`;
+          window.location.href = intentUrl;
+        } else {
+          // iOS: try universal link, fallback after timeout
+          let hasLeft = false;
+          const onBlur = () => { hasLeft = true; };
+          window.addEventListener('blur', onBlur);
+          window.location.href = `park4night://search?lat=${lat}&lng=${lng}&z=13`;
+          setTimeout(() => {
+            window.removeEventListener('blur', onBlur);
+            if (!hasLeft) window.open(webUrl, '_blank', 'noopener');
+          }, 1500);
+        }
       });
     });
 
