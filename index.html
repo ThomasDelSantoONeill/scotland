@@ -3434,6 +3434,39 @@
       fetchWeather();
     });
 
+    // Park4Night deep-link: try app first, fall back to website
+    document.querySelectorAll('.p4n-link').forEach(link => {
+      link.addEventListener('click', function (e) {
+        // Only attempt app deep-link on mobile/tablet
+        if (!/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) return;
+
+        e.preventDefault();
+        const webUrl = this.href;
+        const params = new URL(webUrl).searchParams;
+        const lat = params.get('lat');
+        const lng = params.get('lng');
+
+        // Park4Night app URI scheme
+        const appUrl = `park4night://search?lat=${lat}&lng=${lng}&z=13`;
+
+        // Track if we've left the page (app opened)
+        let hasLeft = false;
+        const onBlur = () => { hasLeft = true; };
+        window.addEventListener('blur', onBlur);
+
+        // Try opening the app
+        window.location.href = appUrl;
+
+        // If still here after 1.5s, app isn't installed — open website
+        setTimeout(() => {
+          window.removeEventListener('blur', onBlur);
+          if (!hasLeft) {
+            window.open(webUrl, '_blank', 'noopener');
+          }
+        }, 1500);
+      });
+    });
+
   </script>
 
 </body>
